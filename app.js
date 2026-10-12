@@ -14,7 +14,6 @@ const haptic=()=>{try{navigator.vibrate&&navigator.vibrate(8)}catch(e){}};
 
 /* ---------- state ---------- */
 const LS='wayfarer.v1';
-const APP_VERSION='1.3.2';
 const DEF_SETTINGS={map:'globe',spin:true,theme:'system',colors:{}};
 let state={trips:[],plans:[],wish:[],lived:[],home:null,settings:{...DEF_SETTINGS},updatedAt:0};
 function normalize(s){
@@ -150,14 +149,17 @@ const cssVar=n=>getComputedStyle(document.documentElement).getPropertyValue(n).t
 /* ---------- tabs ---------- */
 let curTab='atlas';
 const tabs=['atlas','visited','lived','wish','settings'];
+const tabScroll={};
 function setTab(t){
-  curTab=t;haptic();
+  tabScroll[curTab]=scrollY;curTab=t;haptic();
   $$('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
   $$('.view').forEach(v=>v.classList.toggle('active',v.id==='v-'+t));
   $('#tabPill').style.transform='translateX('+(tabs.indexOf(t)*70)+'px)';
+  scrollTo(0,tabScroll[t]||0);navSync();
 }
 $$('.tab').forEach(b=>b.onclick=()=>{if(b.dataset.tab==='settings'&&curTab==='settings'&&setRoute!=='root'){goSettings('root');return}setTab(b.dataset.tab)});
-$$('.view').forEach(v=>{const nav=v.querySelector('.nav');v.addEventListener('scroll',()=>nav.classList.toggle('scrolled',v.scrollTop>38),{passive:true})});
+const navSync=()=>{const v=$('#v-'+curTab);if(v)v.querySelector('.nav').classList.toggle('scrolled',scrollY>38)};
+addEventListener('scroll',navSync,{passive:true});
 $$('[data-add]').forEach(b=>b.onclick=()=>openAdd(b.dataset.add||(curTab==='lived'?'lived':curTab==='wish'?'wish':'visited')));
 
 /* ---------- atlas ---------- */
@@ -208,7 +210,7 @@ function renderTimeline(){
   const total=state.trips.length+state.lived.length+state.plans.length;
   $('#tFilters').innerHTML=total?[['all','Everything'],['trips','Trips'],['moves','Moves']].map(([k,l])=>`<button class="fchip ${tFilter===k?'on':''}" data-tf="${k}">${l}</button>`).join(''):'';
   $$('[data-tf]').forEach(b=>b.onclick=()=>{tFilter=b.dataset.tf;haptic();renderTimeline()});
-  if(!total&&!state.home){$('#tList').innerHTML=`<div class="empty"><div class="ico">🗓️</div><h3>Your story starts here</h3><p>Trips and places you’ve lived appear here in order, newest first.</p><button class="pill-btn" data-add-empty="visited">Add a trip</button></div>`;return}
+  if(!total&&!state.home){$('#tList').innerHTML=`<div class="empty">${emptyArt('timeline')}<h3>Your story starts here</h3><p>Trips and places you’ve lived appear here in order, newest first.</p><button class="pill-btn" data-add-empty="visited">Add a trip</button></div>`;return}
   const maxDays=Math.max(1,...state.trips.map(days));
   let html='<div class="tl">',lastY=null;
   const ups=tFilter!=='moves'?upcomingPlans().slice().reverse():[];
@@ -223,7 +225,7 @@ function renderTimeline(){
   if(undated.length){html+=`<div><span class="tl-year">Undated</span></div>`;undated.forEach(t=>html+=evHTML({kind:'trip',t},'visited',firsts,maxDays))}
   if(state.home&&tFilter!=='trips'){const c=C[state.home];
     html+=`<div><span class="tl-year">Origin</span></div><button class="tl-ev tl-origin" data-detail="${c.code}" style="--c:var(--lived)"><div class="tl-node">${flag(c.code)}</div><div class="tl-card"><div class="k">${I.house.replace('width="18" height="18"','width="13" height="13"')} Home country</div><div class="t1">Where it all started</div><div class="t2">${esc(c.name)}</div></div></button>`}
-  if(!ev.length&&!undated.length&&!nowLiving&&!state.home&&!ups.length)html+=`<div class="empty"><h3>Nothing here yet</h3><p>Try a different filter.</p></div>`;
+  if(!ev.length&&!undated.length&&!nowLiving&&!state.home&&!ups.length)html='<div>'+`<div class="empty">${emptyArt('timeline')}<h3>Nothing here yet</h3><p>Try a different filter.</p></div>`;
   $('#tList').innerHTML=html+'</div>';
 }
 function evHTML(e,col,firsts,maxDays){
@@ -271,10 +273,10 @@ function renderVisited(){
   if(ups.length)top+=`<div class="section"><div class="section-h"><h2>Upcoming</h2><span class="meta">${ups.length} planned</span></div><div class="group">${ups.map(p=>`<div class="swipe" data-del-plan="${p.id}"><button class="del">Delete</button>${planRow(p)}</div>`).join('')}</div></div>`;
   let rest='';
   if(!state.trips.length){
-    if(!state.plans.length)rest=`<div class="empty"><div class="ico">🧳</div><h3>No trips yet</h3><p>Add the places you’ve been, or plan where you’re going next. Your map fills in as you go.</p><button class="pill-btn" data-add-empty="visited">Add a trip</button> <button class="pill-btn" data-add-empty="planned" style="background:var(--fill);color:var(--label)">Plan a trip</button></div>`;
+    if(!state.plans.length)rest=`<div class="empty">${emptyArt('trips')}<h3>No trips yet</h3><p>Add the places you’ve been, or plan where you’re going next. Your map fills in as you go.</p><div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center"><button class="pill-btn" data-add-empty="visited">Add a trip</button><button class="pill-btn" data-add-empty="planned" style="background:var(--fill);color:var(--label)">Plan a trip</button></div></div>`;
   }else{
     const list=state.trips.filter(match).sort((a,b)=>(b.start||'').localeCompare(a.start||''));
-    if(!list.length&&!ups.length)rest=`<div class="empty"><h3>No matches</h3><p>No trip matches “${esc(vQuery)}”.</p></div>`;
+    if(!list.length&&!ups.length)rest=`<div class="empty">${emptyArt('search')}<h3>No matches</h3><p>No trip matches “${esc(vQuery)}”.</p></div>`;
     else{
       const groups={};list.forEach(t=>{const y=t.start?t.start.slice(0,4):'Undated';(groups[y]=groups[y]||[]).push(t)});
       const keys=Object.keys(groups).sort((a,b)=>b==='Undated'?-1:a==='Undated'?1:b-a);
@@ -303,7 +305,7 @@ function renderLived(){
     `<button class="home-card" id="homeCard"><div class="flag">${flag(h.code)}</div><div class="txt" style="flex:1;min-width:0"><div class="k">${I.house.replace('width="18" height="18"','width="13" height="13"')} Home country</div><div class="t1">${esc(h.name)}</div><div class="t2">Where you’re from · tap to change</div></div>${I.chev}</button>`:
     `<button class="home-card" id="homeCard"><div class="flag">${I.house}</div><div class="txt" style="flex:1"><div class="t1" style="font-size:18px">Set your home country</div><div class="t2">Where you’re from. It counts as lived on your map.</div></div>${I.chev}</button>`}</div>`;
   if(!state.lived.length){
-    html+=`<div class="empty" style="padding-top:20px"><div class="ico">🏡</div><h3>Places you’ve lived</h3><p>Add each city or country you’ve lived in, with when you moved in and out.</p><button class="pill-btn" data-add-empty="lived">Add a place</button></div>`;
+    html+=`<div class="empty" style="padding-top:8px">${emptyArt('lived')}<h3>Places you’ve lived</h3><p>Add each city or country you’ve lived in, with when you moved in and out.</p><button class="pill-btn" data-add-empty="lived">Add a place</button></div>`;
   }else{
     const list=[...state.lived].sort((a,b)=>(!a.end?-1:0)-(!b.end?-1:0)||(b.start||'').localeCompare(a.start||''));
     html+=`<div class="section"><div class="section-h"><h2>Places you’ve lived</h2></div><div class="group">${list.map(l=>`<div class="swipe" data-lid="${l.id}"><button class="del">Delete</button><button class="row" data-lived="${l.id}"><div class="lv">${flag(l.code)}</div><div class="txt"><div class="t1">${l.city?esc(l.city)+', ':''}${esc(C[l.code]?.name)}</div><div class="t2">${livedRange(l)} · ${livedDur(l)}</div></div>${!l.end?'<span class="now">Now</span>':''}${I.chev}</button></div>`).join('')}</div></div>`;
@@ -322,7 +324,7 @@ const tierOf=i=>i<3?['Top priority','var(--wish)']:i<8?['Soon','var(--blue)']:['
 function renderWish(){
   const n=state.wish.length;
   $('#wSub').textContent=n?`${n} ${n===1?'country':'countries'} · drag to reprioritise`:'';
-  if(!n){$('#wList').innerHTML=`<div class="empty"><div class="ico">🧭</div><h3>Where to next?</h3><p>Build a ranked list of places you want to see. Number one shows up on your Atlas.</p><button class="pill-btn" data-add-empty="wish">Add a country</button></div>`;return}
+  if(!n){$('#wList').innerHTML=`<div class="empty">${emptyArt('wish')}<h3>Where to next?</h3><p>Build a ranked list of places you want to see. Number one shows up on your Atlas.</p><button class="pill-btn" data-add-empty="wish">Add a country</button></div>`;return}
   $('#wList').innerHTML=`<div class="section wl"><div class="group" id="wGroup">${state.wish.map((w,i)=>{
     const [tn,tc]=tierOf(i);
     return `<div class="swipe" data-wid="${w.id}"><button class="del">Delete</button><div class="row" data-detail="${w.code}" role="button" tabindex="0"><div class="rank">${i+1}<span class="f">${flag(w.code)}</span></div><div class="txt"><div class="t1">${w.place?esc(w.place.name)+`<span style="color:var(--label2)"> · ${esc(C[w.code]?.name)}</span>`:esc(C[w.code]?.name)}</div><div class="t2"><span style="color:${tc};font-weight:600">${tn}</span>${w.note?' · '+esc(w.note):''}</div></div><div class="grip" aria-label="Reorder">${I.grip}</div></div></div>`;
@@ -390,10 +392,11 @@ const sheet=$('#sheet'),scrim=$('#scrim');
 function openSheet(head,body,{half=false}={}){
   $('#sheetHead').innerHTML=head;$('#sheetBody').innerHTML=body;$('#sheetBody').scrollTop=0;
   sheet.classList.toggle('half',half);
+  document.documentElement.classList.add('locked');
   requestAnimationFrame(()=>{sheet.classList.add('on');scrim.classList.add('on')});
   globe.paused=true;
 }
-function closeSheet(){sheet.classList.remove('on');scrim.classList.remove('on');sheet.style.transform='';globe.paused=false;document.activeElement?.blur?.()}
+function closeSheet(){document.documentElement.classList.remove('locked');sheet.classList.remove('on');scrim.classList.remove('on');sheet.style.transform='';globe.paused=false;document.activeElement?.blur?.()}
 scrim.onclick=closeSheet;
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&sheet.classList.contains('on'))closeSheet()});
 (()=>{let y0=null,dy=0;const head=$('#sheetHead'),grab=sheet.querySelector('.grabber');
@@ -462,7 +465,7 @@ function renderPicker(onPick,opts={}){
       if(shown.length)html+=`<div class="alpha">${cc&&!ql?'Popular places':'Cities & islands'}</div><div class="group" style="margin:0 16px">${shown.map(pRow).join('')}</div>`;
       html+=customRow();
     }
-    if(!html)html=`<div class="empty"><h3>No matches</h3><p>Try a different spelling.</p></div>`;
+    if(!html)html=`<div class="empty">${emptyArt('search')}<h3>No matches</h3><p>Try a different spelling.</p></div>`;
     $('#pList').innerHTML=html;
     const cu=$('#pCustom');if(cu)cu.onclick=()=>openCustomPlace(q,cc,p=>onPlace(p),()=>renderPicker(onPick,opts));
   };
@@ -729,7 +732,7 @@ const sico=(icon,bg)=>`<span class="sico" style="background:${bg}">${SI[icon]}</
 const srow=({id,icon,bg,label,val='',chev=true,cls='',attr=''})=>`<button class="srow ${cls}${icon?'':' noicon'}" ${id?`id="${id}"`:''} ${attr}>${icon?sico(icon,bg):''}<span class="lbl">${label}</span>${val?`<span class="val">${val}</span>`:''}${chev?I.chev:''}</button>`;
 const MAPS=[['globe','Globe','A 3D globe you can spin.'],['flat','World map','A flat map that wraps around as you drag sideways.'],['static','Static map','A fixed flat map centred on Greenwich. Zoom in to pan around.']];
 const THEMES=[['system','Automatic'],['light','Light'],['dark','Dark']];
-function goSettings(route){setAnim=route==='root'?'pop-in':'push-in';setRoute=route;haptic();renderSettingsPage();$('#v-settings').scrollTop=0}
+function goSettings(route){setAnim=route==='root'?'pop-in':'push-in';setRoute=route;haptic();renderSettingsPage();scrollTo(0,0);navSync()}
 function renderSettingsPage(){
   const s=state.settings,page=$('#setPage');if(!page)return;
   const nav=$('#setNav'),titles={root:'Settings',map:'Map Style',theme:'Appearance',colors:'Colours'};
@@ -760,9 +763,7 @@ function renderSettingsPage(){
     <div class="sfoot">Everything is stored only on this device, in this browser. Export a backup now and then, and to move to another device.</div>
     <div class="sgap"></div>
     <div class="sgroup">${srow({id:'sErase',icon:'trash',bg:'#FF3B30',label:'Erase All Data',chev:false,cls:'red'})}</div>
-    <div class="sgap"></div>
-    <div class="sgroup"><div class="srow">${sico('info','#8E8E93')}<span class="lbl">Version</span><span class="val">${APP_VERSION}</span></div></div>
-    <div class="sfoot" style="text-align:center;padding-top:14px">Map data: Natural Earth · Places: GeoNames (CC BY 4.0)</div>
+    <div class="sfoot" style="text-align:center;padding-top:22px">Map data: Natural Earth · Places: GeoNames (CC BY 4.0)</div>
     <input type="file" id="sFile" accept="application/json,.json" hidden>`;
   }else if(setRoute==='map'){
     html=`<div style="height:12px"></div><div class="sgroup">${MAPS.map(([k,l])=>`<button class="srow noicon" data-map="${k}"><span class="lbl">${l}</span>${s.map===k?`<span class="chk">${I.check}</span>`:''}</button>`).join('')}</div>
@@ -799,11 +800,11 @@ function renderSettingsPage(){
 /* ---------- iOS pull-down menu & alert ---------- */
 function openMenu(anchor,items){
   closeMenu();haptic();
-  const app=$('#app'),ar=app.getBoundingClientRect(),r=anchor.getBoundingClientRect();
+  const app=document.body,r=anchor.getBoundingClientRect();
   const sc=document.createElement('div');sc.className='menu-scrim';sc.id='menuScrim';
   const m=document.createElement('div');m.className='menu';m.id='menu';m.setAttribute('role','menu');
   m.innerHTML=items.map((it,i)=>`<button class="mi ${it.red?'red':''}" role="menuitem" data-mi="${i}" ${it.disabled?'disabled':''}><span class="mt"><span>${esc(it.label)}</span>${it.sub?`<span class="sub">${esc(it.sub)}</span>`:''}</span>${it.icon||''}</button>`).join('');
-  m.style.top=(r.bottom-ar.top+8)+'px';m.style.right=(ar.right-r.right)+'px';
+  m.style.top=(r.bottom+8)+'px';m.style.right=Math.max(8,innerWidth-r.right)+'px';
   app.appendChild(sc);app.appendChild(m);
   requestAnimationFrame(()=>m.classList.add('on'));
   sc.onpointerdown=e=>{e.preventDefault();closeMenu()};
@@ -812,7 +813,7 @@ function openMenu(anchor,items){
 function closeMenu(){const m=$('#menu'),s=$('#menuScrim');if(s)s.remove();if(m){m.classList.remove('on');m.id='';setTimeout(()=>m.remove(),220)}}
 function iosAlert({title,message='',actions}){
   return new Promise(res=>{
-    const app=$('#app'),w=document.createElement('div');w.className='alert-scrim';
+    const app=document.body,w=document.createElement('div');w.className='alert-scrim';
     w.innerHTML=`<div class="alert" role="alertdialog" aria-label="${esc(title)}"><h4>${esc(title)}</h4>${message?`<p>${esc(message)}</p>`:''}<div class="acts">${actions.map((x,i)=>`<button class="${x.style||'default'}" data-ai="${i}">${esc(x.label)}</button>`).join('')}</div></div>`;
     app.appendChild(w);requestAnimationFrame(()=>w.classList.add('on'));haptic();
     w.onclick=e=>{const b=e.target.closest('[data-ai]');if(!b)return;w.classList.remove('on');setTimeout(()=>w.remove(),200);res(actions[+b.dataset.ai].value)};
@@ -843,6 +844,69 @@ async function importBackup(file){
   }catch(e){toast('That file isn’t a Wayfarer backup.')}
 }
 
+/* ---------- empty-state illustrations ---------- */
+// Hand-drawn SVG scenes; colours follow the user's category colours via CSS variables.
+function emptyArt(kind){
+  const id='ea'+kind;
+  const defs=`<defs><filter id="${id}s" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="6" stdDeviation="7" flood-color="#000" flood-opacity=".13"/></filter></defs>`;
+  const back=a=>`<circle cx="100" cy="76" r="62" style="fill:color-mix(in srgb,var(--${a}) 13%,transparent)"/><circle cx="100" cy="76" r="44" style="fill:color-mix(in srgb,var(--${a}) 9%,transparent)"/>`;
+  const spark=(x,y,s,c)=>`<path d="M${x} ${y-s}Q${x} ${y} ${x+s} ${y}Q${x} ${y} ${x} ${y+s}Q${x} ${y} ${x-s} ${y}Q${x} ${y} ${x} ${y-s}Z" style="fill:var(--${c})" opacity=".85"/>`;
+  const bar=(x,y,w,o=1)=>`<rect x="${x}" y="${y}" width="${w}" height="6" rx="3" style="fill:var(--label3)" opacity="${.55*o}"/>`;
+  const plane=(x,y,s,r,c)=>`<path transform="translate(${x} ${y}) rotate(${r}) scale(${s}) translate(-12 -12)" d="M21 15.5v-2l-8-5V3.6a1.6 1.6 0 0 0-3.2 0v4.9l-8 5v2l8-2.5v4.9L7.6 19.5V21l3.8-1 3.8 1v-1.5L13 18v-5l8 2.5Z" style="fill:var(--${c})"/>`;
+  let body='';
+  if(kind==='trips'){
+    body=back('visited')+
+    `<path d="M22 118 C 50 40, 130 22, 178 44" fill="none" style="stroke:var(--visited)" stroke-width="3" stroke-linecap="round" stroke-dasharray="1 9" opacity=".7"/>
+     <g class="ea-float"><g transform="rotate(-8 100 84)" filter="url(#${id}s)">
+       <rect x="40" y="56" width="120" height="62" rx="14" style="fill:var(--card)"/>
+       <rect x="40" y="56" width="120" height="18" rx="14" style="fill:var(--visited)"/><rect x="40" y="66" width="120" height="8" style="fill:var(--visited)"/>
+       <line x1="122" y1="76" x2="122" y2="116" style="stroke:var(--sep)" stroke-width="2" stroke-dasharray="3 4"/>
+       <circle cx="122" cy="76" r="5" style="fill:var(--bg)"/><circle cx="122" cy="118" r="5" style="fill:var(--bg)"/>
+       ${bar(52,84,40)}${bar(52,96,58,.7)}${bar(52,106,30,.5)}
+       ${plane(141,96,1.05,90,'visited')}
+     </g></g>
+     ${plane(176,42,.75,62,'visited')}${spark(40,36,6,'wish')}${spark(166,120,4.5,'lived')}`;
+  }else if(kind==='timeline'){
+    body=back('visited')+
+    `<line x1="62" y1="22" x2="62" y2="134" style="stroke:color-mix(in srgb,var(--visited) 45%,transparent)" stroke-width="3" stroke-linecap="round"/>
+     ${[['planned',30,64],['visited',66,78],['lived',102,52]].map(([c,y,w],i)=>`<g class="ea-float" style="animation-delay:${i*.35}s">
+       <circle cx="62" cy="${y+12}" r="9" style="fill:var(--bg);stroke:var(--${c})" stroke-width="3.5" ${c==='planned'?'stroke-dasharray="4 3"':''}/>
+       <g filter="url(#${id}s)"><rect x="80" y="${y}" width="${w+30}" height="26" rx="9" style="fill:var(--card)"/></g>
+       <rect x="90" y="${y+7}" width="${w*.55}" height="5" rx="2.5" style="fill:var(--${c})"/>${bar(90,y+15,w*.8,.6).replace('height="6"','height="4.5"')}</g>`).join('')}
+     ${spark(150,30,6,'wish')}${spark(36,112,4.5,'visited')}`;
+  }else if(kind==='lived'){
+    body=back('lived')+
+    `<ellipse cx="100" cy="128" rx="56" ry="7" style="fill:color-mix(in srgb,var(--lived) 18%,transparent)"/>
+     <g class="ea-float"><rect x="124" y="40" width="10" height="24" rx="2" style="fill:color-mix(in srgb,var(--lived) 70%,var(--card))"/><g filter="url(#${id}s)">
+       <rect x="58" y="70" width="84" height="56" rx="8" style="fill:var(--card)"/>
+       <path d="M52 76 L100 38 L148 76 Z" style="fill:var(--lived);stroke:var(--lived)" stroke-width="8" stroke-linejoin="round"/>
+     </g>
+       <rect x="90" y="96" width="22" height="30" rx="5" style="fill:color-mix(in srgb,var(--lived) 30%,var(--card))"/><circle cx="106" cy="112" r="1.8" style="fill:var(--lived)"/>
+       <rect x="68" y="84" width="16" height="14" rx="3" style="fill:color-mix(in srgb,var(--lived) 22%,var(--card))"/><rect x="118" y="84" width="16" height="14" rx="3" style="fill:color-mix(in srgb,var(--lived) 22%,var(--card))"/>
+     </g>
+     <g class="ea-float" style="animation-delay:.5s"><g filter="url(#${id}s)"><path d="M160 22c-9 0-16 7-16 16 0 12 16 26 16 26s16-14 16-26c0-9-7-16-16-16z" style="fill:var(--red)"/></g><circle cx="160" cy="38" r="6" fill="#fff"/></g>
+     ${spark(40,40,6,'wish')}${spark(34,100,4,'visited')}`;
+  }else if(kind==='wish'){
+    body=back('wish')+
+    `<g class="ea-float"><g filter="url(#${id}s)">
+       <path d="M44 50 L76 40 L116 52 L156 42 L156 112 L116 122 L76 110 L44 120 Z" style="fill:var(--card)"/></g>
+       <path d="M76 40 L76 110 L116 122 L116 52 Z" style="fill:color-mix(in srgb,var(--wish) 10%,var(--card))"/>
+       <path d="M54 104 C 70 92, 74 74, 92 78 S 120 98, 136 70" fill="none" style="stroke:var(--wish)" stroke-width="3" stroke-linecap="round" stroke-dasharray="1 7"/>
+       <circle cx="54" cy="104" r="5" style="fill:var(--card);stroke:var(--wish)" stroke-width="3"/>
+       <path transform="translate(140 62)" d="M0-14 4.1-4.9 14-4.3 6.5 2.3 8.8 12 0 6.9-8.8 12-6.5 2.3-14-4.3-4.1-4.9Z" style="fill:var(--wish)"/>
+     </g>${spark(160,28,6,'wish')}${spark(38,40,4.5,'planned')}${spark(170,124,4,'visited')}`;
+  }else{ // search / no matches
+    body=back('blue')+
+    `<g filter="url(#${id}s)"><rect x="46" y="44" width="92" height="70" rx="12" style="fill:var(--card)"/></g>
+     ${bar(58,58,48)}${bar(58,72,66,.7)}${bar(58,86,36,.5)}${bar(58,100,56,.4)}
+     <g class="ea-float"><circle cx="128" cy="92" r="22" style="fill:color-mix(in srgb,var(--blue) 10%,var(--card));stroke:var(--blue)" stroke-width="6"/>
+       <line x1="144" y1="108" x2="160" y2="124" style="stroke:var(--blue)" stroke-width="8" stroke-linecap="round"/>
+       <path d="M118 84 Q 122 78 129 77" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".9"/></g>
+     ${spark(44,34,5,'blue')}`;
+  }
+  return `<svg class="ea" viewBox="0 0 200 150" role="img" aria-hidden="true">${defs}${body}</svg>`;
+}
+
 /* ---------- toast & confetti ---------- */
 let toastT;
 function toast(msg,undo){
@@ -852,7 +916,7 @@ function toast(msg,undo){
 }
 function confetti(){
   if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;
-  const cv=$('#confetti'),app=$('#app'),dpr=devicePixelRatio||1;cv.width=app.clientWidth*dpr;cv.height=app.clientHeight*dpr;
+  const cv=$('#confetti'),app={clientWidth:innerWidth,clientHeight:innerHeight},dpr=devicePixelRatio||1;cv.width=app.clientWidth*dpr;cv.height=app.clientHeight*dpr;
   const ctx=cv.getContext('2d');if(!ctx)return;ctx.scale(dpr,dpr);
   const cols=['--visited','--lived','--wish','--blue'].map(cssVar);
   const W=app.clientWidth,P=Array.from({length:110},()=>({x:W/2+(Math.random()-.5)*60,y:app.clientHeight*.35,vx:(Math.random()-.5)*11,vy:-Math.random()*13-4,r:Math.random()*6+3,a:Math.random()*6,va:(Math.random()-.5)*.4,c:cols[Math.random()*cols.length|0]}));
@@ -1068,7 +1132,32 @@ function drawGlobe(){
 matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change',()=>{applySettings();drawGlobe()});
 
 ['gesturestart','gesturechange'].forEach(t=>document.addEventListener(t,e=>e.preventDefault(),{passive:false}));
-if('serviceWorker' in navigator&&/^https?:/.test(location.protocol))addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+if('serviceWorker' in navigator&&/^https?:/.test(location.protocol)){
+  // updateViaCache:'none' = always fetch sw.js fresh; check again whenever the home-screen app comes back to the foreground
+  addEventListener('load',()=>navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(reg=>{
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden)reg.update().catch(()=>{})});
+  }).catch(()=>{}));
+  // when a new worker takes over, reload once so the new code is actually running
+  const hadController=!!navigator.serviceWorker.controller;let reloaded=false;
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!hadController||reloaded)return;reloaded=true;location.reload()});
+}
+/* ---------- layout debug overlay: open the app with ?debug ---------- */
+if(/[?&]debug\b/.test(location.search))addEventListener('load',()=>{
+  const probe=document.createElement('div');
+  probe.style.cssText='position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)';
+  document.body.appendChild(probe);
+  const box=document.createElement('pre');
+  box.style.cssText='position:fixed;z-index:9999;left:50%;top:40%;transform:translateX(-50%);margin:0;padding:10px 12px;border-radius:12px;background:rgba(0,0,0,.82);color:#7CFC8A;font:12px/1.35 ui-monospace,Menlo,monospace;pointer-events:none;white-space:pre';
+  document.body.appendChild(box);
+  const lines=['top','bottom'].map(s=>{const d=document.createElement('div');d.style.cssText=`position:fixed;left:0;right:0;${s}:0;height:2px;background:#f0f;z-index:9998;pointer-events:none`;document.body.appendChild(d);return d});
+  const upd=()=>{const cs=getComputedStyle(probe),app=$('#app').getBoundingClientRect(),tb=$('.tabbar').getBoundingClientRect(),vv=window.visualViewport;
+    box.textContent=[`mode     ${matchMedia('(display-mode: standalone)').matches||navigator.standalone?'home screen':'browser'}`,
+      `inner    ${innerWidth}×${innerHeight}`,`visual   ${vv?Math.round(vv.width)+'×'+Math.round(vv.height)+' @'+Math.round(vv.offsetTop):'-'}`,
+      `screen   ${screen.width}×${screen.height}`,`safe T/B ${cs.paddingTop} / ${cs.paddingBottom}`,
+      `#app     y ${Math.round(app.top)}…${Math.round(app.bottom)}`,`tabbar   y ${Math.round(tb.top)}…${Math.round(tb.bottom)}`,
+      `UA       ${navigator.userAgent.match(/OS [\d_]+|Version\/[\d.]+/g)?.join(' ')||''}`].join('\n')};
+  upd();addEventListener('resize',upd);window.visualViewport&&visualViewport.addEventListener('resize',upd);setInterval(upd,1000);
+});
 function renderAll(){renderAtlas();renderTimeline();renderVisited();renderVisitedMode();renderLived();renderWish();renderSettingsPage()}
 initGlobe();applySettings();renderAll();
 })();
