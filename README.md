@@ -17,7 +17,7 @@ All paths are relative, so it works from a sub-path.
 
 ## Updating
 
-After changing any file, bump `VERSION` in `sw.js` (and `APP_VERSION` in `app.js`), so installed copies fetch the new version. An installed app picks up the update on the next launch after it has been online.
+App code (`index.html`, `app.js`, `styles.css`) is loaded network-first, so changes show up on the next launch while online. Only if you replace files in `data/`, `vendor/` or `icons/`, change `CACHE` in `sw.js` to any new value. An installed app picks up the update on the next launch after it has been online.
 
 ## Run locally
 
