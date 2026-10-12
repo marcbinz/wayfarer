@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<title>Wayfarer</title>
+<meta name="description" content="Track the countries, cities and islands you’ve been to, lived in and want to see.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Wayfarer">
+<meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
+<link rel="apple-touch-icon" sizes="167x167" href="icons/apple-touch-icon-167.png">
+<link rel="apple-touch-icon" sizes="152x152" href="icons/apple-touch-icon-152.png">
+<link rel="apple-touch-icon" sizes="120x120" href="icons/apple-touch-icon-120.png">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app">
+
+  <section class="view active" id="v-atlas">
+    <div class="nav"><span class="inline-title">Atlas</span><div class="trail"><button class="glass-btn tint" data-add aria-label="Add"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 4.5v15M4.5 12h15"/></svg></button></div></div>
+    <h1 class="large-title">Atlas</h1>
+    <div class="globe-wrap" id="globeWrap"><canvas id="globe" aria-label="Map of your travels. Drag to move, pinch or scroll to zoom, double-tap to zoom in, tap a country for details."></canvas>
+      <div class="map-ctl"><button id="zoomIn" aria-label="Zoom in"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button><button id="zoomOut" aria-label="Zoom out"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M5 12h14"/></svg></button></div>
+      <button class="map-ctl reset" id="zoomReset" aria-label="Reset zoom"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 15v5h-5M4 4l6 6M20 20l-6-6"/></svg>Reset</button></div>
+    <div class="legend"><span><i style="background:var(--visited)"></i>Been there</span><span><i style="background:var(--planned)"></i>Planned</span><span><i style="background:var(--lived)"></i>Lived</span><span><i style="background:var(--wish)"></i>Want to go</span></div>
+    <div class="hero-count"><div class="n" id="hCount">0</div><div class="l"><b id="hLabel">countries</b><span id="hPct">0% of the world</span></div></div>
+    <div class="section"><div class="stats" id="stats"></div></div>
+    <div class="section" id="nextSec"></div>
+    <div class="section"><div class="section-h"><h2>Continents</h2><span class="meta" id="contMeta"></span></div><div class="group" id="conts"></div></div>
+  </section>
+
+  <section class="view" id="v-visited">
+    <div class="nav"><span class="inline-title">Been there</span><div class="trail"><button class="glass-btn tint" data-add="visited" aria-label="Add trip"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 4.5v15M4.5 12h15"/></svg></button></div></div>
+    <h1 class="large-title">Been there</h1>
+    <p class="subtitle" id="vSub"></p>
+    <div id="vSegWrap"></div>
+    <div id="vTripsWrap">
+    <label class="search" id="vSearchWrap"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="vSearch" placeholder="Search trips" autocomplete="off"></label>
+    <div id="vList"></div>
+    </div>
+    <div id="vTimelineWrap" hidden>
+    <div class="filters" id="tFilters"></div>
+    <div id="tList"></div>
+    </div>
+  </section>
+
+  <section class="view" id="v-settings">
+    <div class="nav" id="setNav"><div class="lead" id="setLead"></div><span class="inline-title" id="setInline">Settings</span></div>
+    <div id="setPage"></div>
+  </section>
+
+  <section class="view" id="v-lived">
+    <div class="nav"><span class="inline-title">Lived there</span><div class="trail"><button class="glass-btn tint" data-add="lived" aria-label="Add place you lived"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 4.5v15M4.5 12h15"/></svg></button></div></div>
+    <h1 class="large-title">Lived there</h1>
+    <p class="subtitle" id="lSub"></p>
+    <div id="lList"></div>
+  </section>
+
+  <section class="view" id="v-wish">
+    <div class="nav"><span class="inline-title">Want to go</span><div class="trail"><button class="glass-btn tint" data-add="wish" aria-label="Add to wishlist"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 4.5v15M4.5 12h15"/></svg></button></div></div>
+    <h1 class="large-title">Want to go</h1>
+    <p class="subtitle" id="wSub"></p>
+    <div id="wList"></div>
+  </section>
+
+  <nav class="tabbar" role="tablist">
+    <div class="tab-pill" id="tabPill"></div>
+    <button class="tab active" data-tab="atlas" role="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.6 3.8 5.6 3.8 9s-1.2 6.4-3.8 9c-2.6-2.6-3.8-5.6-3.8-9S9.4 5.6 12 3Z"/></svg>Atlas</button>
+    <button class="tab" data-tab="visited" role="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M21 3 3 10.5l7 2.5 2.5 7L21 3Z"/><path d="m10 13 4-4"/></svg>Been there</button>
+    <button class="tab" data-tab="lived" role="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M3.5 11 12 4l8.5 7"/><path d="M5.5 9.5V20h13V9.5"/><path d="M10 20v-5.5h4V20"/></svg>Lived</button>
+    <button class="tab" data-tab="wish" role="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9L12 3Z"/></svg>Want to go</button>
+    <button class="tab" data-tab="settings" role="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>Settings</button>
+  </nav>
+
+  <div class="scrim" id="scrim"></div>
+  <div class="sheet" id="sheet" role="dialog" aria-modal="true"><div class="grabber"></div><div class="sheet-head" id="sheetHead"></div><div class="sheet-body" id="sheetBody"></div></div>
+  <div class="toast" id="toast"></div>
+  <canvas class="confetti" id="confetti"></canvas>
+</div>
+
+<script src="vendor/d3.min.js" defer></script>
+<script src="vendor/topojson-client.min.js" defer></script>
+<script src="data/countries.js" defer></script>
+<script src="data/places.js" defer></script>
+<script src="app.js" defer></script>
+</body>
+</html>
