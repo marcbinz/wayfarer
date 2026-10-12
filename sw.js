@@ -1,6 +1,6 @@
 // Wayfarer service worker: offline-first app shell.
 // Bump VERSION whenever you change any file so phones pick up the update.
-const VERSION='wayfarer-1.3.1';
+const VERSION='wayfarer-1.3.2';
 const ASSETS=['./','index.html','styles.css','app.js','data/countries.js','data/places.js',
   'vendor/d3.min.js','vendor/topojson-client.min.js','manifest.webmanifest',
   'icons/icon-192.png','icons/icon-512.png','icons/apple-touch-icon.png','icons/favicon-32.png'];

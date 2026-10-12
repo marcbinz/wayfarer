@@ -14,7 +14,7 @@ const haptic=()=>{try{navigator.vibrate&&navigator.vibrate(8)}catch(e){}};
 
 /* ---------- state ---------- */
 const LS='wayfarer.v1';
-const APP_VERSION='1.3.1';
+const APP_VERSION='1.3.2';
 const DEF_SETTINGS={map:'globe',spin:true,theme:'system',colors:{}};
 let state={trips:[],plans:[],wish:[],lived:[],home:null,settings:{...DEF_SETTINGS},updatedAt:0};
 function normalize(s){
@@ -343,15 +343,15 @@ function attachSwipe(wrap,onDel){
     if(locked===null&&(Math.abs(mx)>8||Math.abs(my)>8))locked=Math.abs(mx)>Math.abs(my)?'x':'y';
     if(locked!=='x')return;
     try{row.setPointerCapture(e.pointerId)}catch(_){}
-    dx=Math.min(0,base+mx);row.style.transition='none';row.style.transform=`translateX(${dx<-88?-88+(dx+88)*.3:dx}px)`;
+    wrap.classList.add('swiping');dx=Math.min(0,base+mx);row.style.transition='none';row.style.transform=`translateX(${dx<-88?-88+(dx+88)*.3:dx}px)`;
   });
   const end=()=>{if(!active)return;active=false;row.style.transition='';
     if(locked==='x'){row.dataset.swiped='1';setTimeout(()=>delete row.dataset.swiped,50);
-      if(dx<-44){row.style.transform='translateX(-88px)';openSwipe=wrap}else{row.style.transform='';if(openSwipe===wrap)openSwipe=null}}};
+      if(dx<-44){row.style.transform='translateX(-88px)';openSwipe=wrap}else{row.style.transform='';if(openSwipe===wrap)openSwipe=null;setTimeout(()=>{if(openSwipe!==wrap)wrap.classList.remove('swiping')},320)}}};
   row.addEventListener('pointerup',end);row.addEventListener('pointercancel',end);
   wrap.querySelector('.del').onclick=e=>{e.stopPropagation();haptic();wrap.style.transition='height .25s';wrap.style.height=wrap.offsetHeight+'px';requestAnimationFrame(()=>{wrap.style.height='0'});openSwipe=null;setTimeout(onDel,230)};
 }
-function closeSwipe(){if(openSwipe){openSwipe.querySelector('.row').style.transform='';openSwipe=null}}
+function closeSwipe(){if(openSwipe){const w=openSwipe;w.querySelector('.row').style.transform='';openSwipe=null;setTimeout(()=>{if(openSwipe!==w)w.classList.remove('swiping')},320)}}
 
 function attachDrag(wrap){
   const grip=wrap.querySelector('.grip');
